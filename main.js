@@ -1,0 +1,291 @@
+
+const desiredOrder = [
+    "FECHA",
+    "TIPO_DOCUMENTO",	
+    "FACTURA",	
+    "SERIE",	
+    "CDC",	
+    "TIMBRADO",	
+    "TIMBRADO_VENCIMIENTO",	
+    "TIPO_DOCUMENTO_PERSONA",	
+    "DOCUMENTO_PERSONA",	
+    "NOMBRE_PERSONA",	
+    "SUBTOTAL_10",	
+    "SUBTOTAL_05",	
+    "SUBTOTAL_EXENTAS",	
+    "LIQUIDACION_IVA_10",	
+    "LIQUIDACION_IVA_05",	
+    "LIQUIDACION_IVA_TOTAL",	
+    "TOTAL_BRUTO",	
+    "REDONDEO",	
+    "TOTAL",	
+    "MONEDA",	
+    "TOTAL_GS",	
+    "CONDICIÓN",	
+    "CUOTAS",	
+    "CUENTA_10",	
+    "CUENTA_05",	
+    "CUENTA_00",	
+    "CUENTA_DEBE",	
+    "TRANSACCION",	
+    "ESTADO_DOCUMENTO",	
+    "MOTIVO",	
+    "OBSERVACIÓN"
+];
+
+
+const fileInput = document.getElementById('fileInput');
+
+const form = document.querySelector('.main-form');
+
+let processedWorkbook = null; // store after processing
+
+function reorderColumnsByHeaders(worksheet, desiredHeaders) {
+    const headerRow = worksheet.getRow(1);
+
+    // 1. Build a map from header name to column index
+    const headerToIndex = {};
+    for (let col = 1; col <= headerRow.cellCount; col++) {
+        const headerValue = headerRow.getCell(col).value;
+        if (headerValue) headerToIndex[headerValue.toString().trim()] = col;
+    }
+
+    // 2. Create a new worksheet to hold reordered data
+    const newWorksheet = worksheet.workbook.addWorksheet('Reordered');
+
+    // 3. Copy rows, rearranging columns in the desired order
+    worksheet.eachRow({ includeEmpty: false }, (row, rowNumber) => {
+        const newRowValues = [];
+
+        desiredHeaders.forEach((header, i) => {
+            const oldColIndex = headerToIndex[header];
+            if (oldColIndex !== undefined) {
+                newRowValues[i + 1] = row.getCell(oldColIndex).value;
+            } else {
+                newRowValues[i + 1] = null; // or "" if you prefer
+            }
+        });
+
+        newWorksheet.addRow(newRowValues);
+    });
+
+    // 4. Optional: delete original worksheet if you want
+    // worksheet.workbook.removeWorksheet(worksheet.id);
+
+    // 5. Return new worksheet for further use
+    return newWorksheet;
+}
+
+function getCellHeader(worksheet, headerName) {
+    const headerRow = worksheet.getRow(1); // assuming first row has headers
+    for (let colIndex = 1; colIndex <= headerRow.cellCount; colIndex++) {
+        if (headerRow.getCell(colIndex).value === headerName) {
+            return headerRow.getCell(colIndex);
+        }
+    }
+    return -1; // not found
+}
+
+function insertColumnWithDefault(worksheet, position, headerName, defaultValue) {
+    // 1. Insert the new column
+    worksheet.spliceColumns(position, 0, []); // empty column
+
+    // 2. Set the header
+    worksheet.getRow(1).getCell(position).value = headerName;
+
+    // 3. Fill default value until the last data row
+    const lastRow = worksheet.actualRowCount;
+    for (let rowIndex = 2; rowIndex <= lastRow; rowIndex++) {
+        worksheet.getRow(rowIndex).getCell(position).value = defaultValue;
+    }
+}
+
+form.addEventListener('submit', async (event) => {
+    event.preventDefault();
+
+    // Security checkings
+    const selectedFile = fileInput.files[0];
+    if (!selectedFile) {
+        alert("Please select a file.");
+        return;
+    }
+
+    // Allowed extensions and MIME types
+    const allowedExtensions = ['xlsx', 'xls', 'csv'];
+    const allowedMimeTypes = [
+        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', // .xlsx
+        'application/vnd.ms-excel',                                         // .xls
+        'text/csv'                                                          // .csv
+    ];
+
+    const fileExtension = selectedFile.name.split('.').pop().toLowerCase();
+    const fileMimeType = selectedFile.type;
+
+    if (!allowedExtensions.includes(fileExtension) || !allowedMimeTypes.includes(fileMimeType)) {
+        alert("Only spreadsheet files (.xlsx, .xls, .csv) are allowed.");
+        return;
+    }
+
+    console.log("Valid spreadsheet:", selectedFile);
+
+    try {
+        const arrayBuffer = await selectedFile.arrayBuffer();
+        const workbook = new ExcelJS.Workbook();
+        await workbook.xlsx.load(arrayBuffer);
+
+        const worksheet = workbook.worksheets[0];
+
+        // ----------- DELETE COLUMNS --------------
+        // NOTE: Column indices change after each splice.
+        // Original: 1:DIA, 2:Fecha, 3:TipoComp, 4:SUCURSAL
+        worksheet.spliceColumns(1, 1); // Deletes "DIA", SUCURSAL is now at col 3
+        worksheet.spliceColumns(3, 1); // Deletes "SUCURSAL"
+        // After deletions, original column 15 ("RETENCION") is now at column 13
+        worksheet.spliceColumns(13, 1); // Deletes "RETENCION"
+
+        // ----------- RENAME COLUMNS --------------
+        getCellHeader(worksheet, 'Tipo de Comprobante').value = "CONDICIÓN";
+        getCellHeader(worksheet, 'Fecha de Emisión').value = "FECHA";
+        getCellHeader(worksheet, 'Número de Comprante').value = "FACTURA";
+        getCellHeader(worksheet, 'Código de Timbrado').value = "TIMBRADO";
+        getCellHeader(worksheet, 'Número de Documento').value = "DOCUMENTO_PERSONA";
+        getCellHeader(worksheet, 'Nombre / Razón Social').value = "NOMBRE_PERSONA";
+        getCellHeader(worksheet, 'Exento').value = "SUBTOTAL_EXENTAS";
+        getCellHeader(worksheet, 'IVA 10 Impuesto').value = "LIQUIDACION_IVA_10";
+        getCellHeader(worksheet, 'IVA 5 Impuesto').value = "LIQUIDACION_IVA_05";
+        getCellHeader(worksheet, 'Total').value = "TOTAL_BRUTO";
+
+        // ----------- INSERT NEW COLUMNS WITH DEFAULTS --------------
+        // Note: Inserting all at position 1 adds them in reverse order, which is fine since we reorder them later.
+        insertColumnWithDefault(worksheet, 1, "TIPO_DOCUMENTO", "PREIMPRESO");
+        insertColumnWithDefault(worksheet, 1, "SERIE", "");
+        insertColumnWithDefault(worksheet, 1, "CDC", "");
+        insertColumnWithDefault(worksheet, 1, "TIMBRADO_VENCIMIENTO", "");
+        insertColumnWithDefault(worksheet, 1, "TIPO_DOCUMENTO_PERSONA", "");
+        insertColumnWithDefault(worksheet, 1, "SUBTOTAL_10", "");
+        insertColumnWithDefault(worksheet, 1, "SUBTOTAL_05", "");
+        insertColumnWithDefault(worksheet, 1, "LIQUIDACION_IVA_TOTAL", "");
+        insertColumnWithDefault(worksheet, 1, "REDONDEO", "0");
+        insertColumnWithDefault(worksheet, 1, "TOTAL", "");
+        insertColumnWithDefault(worksheet, 1, "MONEDA", "GS");
+        insertColumnWithDefault(worksheet, 1, "TOTAL_GS", "0.00");
+        insertColumnWithDefault(worksheet, 1, "CUOTAS", "0");
+        insertColumnWithDefault(worksheet, 1, "CUENTA_10", "VENTA DE MERCADERÍAS GRAV. 10%");
+        insertColumnWithDefault(worksheet, 1, "CUENTA_05", "VENTA DE MERCADERÍAS GRAV. 05%");
+        insertColumnWithDefault(worksheet, 1, "CUENTA_00", "VENTAS DE MERCADERÍAS EXENTAS DEL IVA");
+        insertColumnWithDefault(worksheet, 1, "CUENTA_DEBE", "");
+        insertColumnWithDefault(worksheet, 1, "TRANSACCION", "");
+        insertColumnWithDefault(worksheet, 1, "ESTADO_DOCUMENTO", "ACTIVO");
+        insertColumnWithDefault(worksheet, 1, "MOTIVO", "");
+        insertColumnWithDefault(worksheet, 1, "OBSERVACIÓN", "");
+
+
+        // ----------- PERFORM DATA TRANSFORMATIONS AND CALCULATIONS -----------
+        
+        // 1. Get all column indices by header name for efficient access
+        const colIndexes = {};
+        worksheet.getRow(1).eachCell({ includeEmpty: true }, (cell, colNumber) => {
+            if (cell.value) {
+                colIndexes[cell.value.toString().trim()] = colNumber;
+            }
+        });
+
+        // 2. Iterate through each data row to apply all transformations
+        worksheet.eachRow({ includeEmpty: false }, (row, rowNumber) => {
+            if (rowNumber === 1) return; // Skip the header row
+
+            // Task: Reformat "FECHA" from YYYY-MM-DD to DD/MM/YYYY
+            const fechaCell = row.getCell(colIndexes['FECHA']);
+            if (fechaCell && fechaCell.value) {
+                let dateVal = fechaCell.value;
+                if (dateVal instanceof Date) {
+                    if (!isNaN(dateVal.getTime())) { // Check for valid date
+                        const day = String(dateVal.getUTCDate()).padStart(2, '0');
+                        const month = String(dateVal.getUTCMonth() + 1).padStart(2, '0');
+                        const year = dateVal.getUTCFullYear();
+                        fechaCell.value = `${day}/${month}/${year}`;
+                    }
+                } else if (typeof dateVal === 'string' && /^\d{4}-\d{2}-\d{2}/.test(dateVal)) {
+                    const [year, month, day] = dateVal.substring(0, 10).split('-');
+                    fechaCell.value = `${day}/${month}/${year}`;
+                }
+            }
+            
+            // Task: Manipulate "NOMBRE_PERSONA" (replace and uppercase)
+            const nombrePersonaCell = row.getCell(colIndexes['NOMBRE_PERSONA']);
+            if (nombrePersonaCell && nombrePersonaCell.value) {
+                let nombre = nombrePersonaCell.value.toString().trim();
+                if (nombre === "Cliente  Ocasional" || nombre === "SIN NOMBRE") {
+                    nombre = "IMPORTES CONSOLIDADOS";
+                }
+                nombrePersonaCell.value = nombre.toUpperCase();
+            }
+
+            // Task: Replace value in "DOCUMENTO_PERSONA"
+            const docPersonaCell = row.getCell(colIndexes['DOCUMENTO_PERSONA']);
+            if (docPersonaCell && docPersonaCell.value && docPersonaCell.value.toString().trim() === 'X') {
+                docPersonaCell.value = "44444401-7";
+            }
+            
+            // Task: Conditional "TIPO_DOCUMENTO_PERSONA"
+            const tipoDocPersonaCell = row.getCell(colIndexes['TIPO_DOCUMENTO_PERSONA']);
+            if (docPersonaCell && docPersonaCell.value && tipoDocPersonaCell) {
+                tipoDocPersonaCell.value = docPersonaCell.value.toString().includes('-') 
+                    ? "RUC" 
+                    : "CEDULA_PARAGUAYA";
+            }
+            
+            // --- Calculations ---
+            // Get values from source columns, defaulting to 0 if not a number
+            const liqIva10 = Number(row.getCell(colIndexes['LIQUIDACION_IVA_10']).value) || 0;
+            const baseIva10 = Number(row.getCell(colIndexes['IVA 10 Base Imponible']).value) || 0;
+            
+            const liqIva05 = Number(row.getCell(colIndexes['LIQUIDACION_IVA_05']).value) || 0;
+            const baseIva05 = Number(row.getCell(colIndexes['IVA 5 Base Imponible']).value) || 0;
+
+            const totalBruto = row.getCell(colIndexes['TOTAL_BRUTO']).value;
+
+            // Task: Calculate "SUBTOTAL_10"
+            row.getCell(colIndexes['SUBTOTAL_10']).value = liqIva10 + baseIva10;
+            
+            // Task: Calculate "SUBTOTAL_05"
+            row.getCell(colIndexes['SUBTOTAL_05']).value = liqIva05 + baseIva05;
+            
+            // Task: Calculate "LIQUIDACION_IVA_TOTAL"
+            row.getCell(colIndexes['LIQUIDACION_IVA_TOTAL']).value = liqIva10 + liqIva05;
+            
+            // Task: Copy "TOTAL_BRUTO" to "TOTAL"
+            row.getCell(colIndexes['TOTAL']).value = totalBruto;
+        });
+
+
+        // ----------- REORDER ALL COLUMNS -----------
+        const reorderedSheet = reorderColumnsByHeaders(worksheet, desiredOrder);
+
+        // Remove the old sheet and rename the new one to match
+        worksheet.workbook.removeWorksheet(worksheet.id);
+        reorderedSheet.name = worksheet.name; // Preserve old sheet name
+
+        processedWorkbook = workbook;
+        alert("File processed successfully! Click 'Download' to get the new file.");
+
+    } catch (err) {
+        console.error("Error processing file:", err);
+        alert("Could not process the file. Please check the console for errors.");
+    }
+});
+
+
+downloadBtn.addEventListener('click', async () => {
+    if (!processedWorkbook) return;
+
+    const buffer = await processedWorkbook.xlsx.writeBuffer();
+    const blob = new Blob([buffer], {
+        type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    });
+
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(blob);
+    link.download = "modified.xlsx";
+    link.click();
+});
