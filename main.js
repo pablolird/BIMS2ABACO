@@ -280,6 +280,8 @@ form.addEventListener('submit', async (event) => {
     } catch (err) {
         console.error("Error processing file:", err);
         alert("Could not process the file. Please check the console for errors.");
+        in_process_section.classList.toggle('hidden');
+
     }
 });
 
