@@ -36,6 +36,12 @@ const desiredOrder = [
 
 const fileInput = document.getElementById('fileInput');
 
+const downloadBtn = document.getElementById('downloadBtn');
+
+const in_process_section = document.querySelector('.in-process');
+
+const download_section = document.querySelector('.finished');
+
 const form = document.querySelector('.main-form');
 
 let processedWorkbook = null; // store after processing
@@ -125,8 +131,8 @@ form.addEventListener('submit', async (event) => {
         alert("Only spreadsheet files (.xlsx, .xls, .csv) are allowed.");
         return;
     }
-
-    console.log("Valid spreadsheet:", selectedFile);
+    
+    in_process_section.classList.toggle('hidden');
 
     try {
         const arrayBuffer = await selectedFile.arrayBuffer();
@@ -267,7 +273,9 @@ form.addEventListener('submit', async (event) => {
         reorderedSheet.name = worksheet.name; // Preserve old sheet name
 
         processedWorkbook = workbook;
-        alert("File processed successfully! Click 'Download' to get the new file.");
+        in_process_section.classList.toggle('hidden');
+        download_section.classList.toggle('hidden')
+        // alert("File processed successfully! Click 'Download' to get the new file.");
 
     } catch (err) {
         console.error("Error processing file:", err);
