@@ -152,7 +152,6 @@ function generateTimbradoTable() {
 
         // Event Listeners
         editButton.addEventListener('click', () => {
-            idInput.readOnly = false;
             expirationInput.readOnly = false;
             editButton.classList.add('hidden');
             saveButton.classList.remove('hidden');
