@@ -8,7 +8,7 @@
 
 # BIMS2ABACO - Convert BIMS spreadsheets to Abaco
 
-BIMS2ABACO is a web-based tool that automates the process of converting BIMS spreadsheets to a format compatible with Abaco, two popular accounting software in Paraguay. This tool was created to streamline the workflow for accountants who need to transfer sales data from BIMS to Abaco, saving them time and effort from manual data manipulation.
+BIMS2ABACO is a web-based tool that automates the process of converting BIMS spreadsheets to a format compatible with Abaco, two accounting software in Paraguay. This tool was created to streamline the workflow for accountants who need to transfer sales data from BIMS to Abaco, saving them time and effort from manual data manipulation.
 
 ## How it Works
 
@@ -27,7 +27,7 @@ The process is simple:
 
 * **User-friendly interface**: Simple and intuitive design for a smooth user experience.
 * **Automatic spreadsheet conversion**: No more manual and tedious data manipulation.
-* **"Timbrado" management**: Easily manage your "timbrados" and their expiration dates.
+* **Timbrado management**: Easily manage timbrado data and their expiration dates.
 * **Secure and private**: All the processing is done in the browser, so your data never leaves your computer.
 * **Cross-platform**: Being a web-based tool, it can be used on any operating system with a modern web browser.
 
