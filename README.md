@@ -33,7 +33,7 @@ The process is simple:
 
 ## Getting Started
 
-To use the tool, simply go to the <a href="https://pablolird.github.io/BIMS2ABACO/?">. Then, follow the on-screen instructions to convert your BIMS spreadsheet.
+To use the tool, simply go to this <a href="https://pablolird.github.io/BIMS2ABACO/?">link</a>. Then, follow the on-screen instructions to convert your BIMS spreadsheet.
 
 ## Technologies Used
 
