@@ -1,35 +1,34 @@
-
 const desiredOrder = [
     "FECHA",
-    "TIPO_DOCUMENTO",	
-    "FACTURA",	
-    "SERIE",	
-    "CDC",	
-    "TIMBRADO",	
-    "TIMBRADO_VENCIMIENTO",	
-    "TIPO_DOCUMENTO_PERSONA",	
-    "DOCUMENTO_PERSONA",	
-    "NOMBRE_PERSONA",	
-    "SUBTOTAL_10",	
-    "SUBTOTAL_05",	
-    "SUBTOTAL_EXENTAS",	
-    "LIQUIDACION_IVA_10",	
-    "LIQUIDACION_IVA_05",	
-    "LIQUIDACION_IVA_TOTAL",	
-    "TOTAL_BRUTO",	
-    "REDONDEO",	
-    "TOTAL",	
-    "MONEDA",	
-    "TOTAL_GS",	
-    "CONDICIÓN",	
-    "CUOTAS",	
-    "CUENTA_10",	
-    "CUENTA_05",	
-    "CUENTA_00",	
-    "CUENTA_DEBE",	
-    "TRANSACCION",	
-    "ESTADO_DOCUMENTO",	
-    "MOTIVO",	
+    "TIPO_DOCUMENTO",
+    "FACTURA",
+    "SERIE",
+    "CDC",
+    "TIMBRADO",
+    "TIMBRADO_VENCIMIENTO",
+    "TIPO_DOCUMENTO_PERSONA",
+    "DOCUMENTO_PERSONA",
+    "NOMBRE_PERSONA",
+    "SUBTOTAL_10",
+    "SUBTOTAL_05",
+    "SUBTOTAL_EXENTAS",
+    "LIQUIDACION_IVA_10",
+    "LIQUIDACION_IVA_05",
+    "LIQUIDACION_IVA_TOTAL",
+    "TOTAL_BRUTO",
+    "REDONDEO",
+    "TOTAL",
+    "MONEDA",
+    "TOTAL_GS",
+    "CONDICIÓN",
+    "CUOTAS",
+    "CUENTA_10",
+    "CUENTA_05",
+    "CUENTA_00",
+    "CUENTA_DEBE",
+    "TRANSACCION",
+    "ESTADO_DOCUMENTO",
+    "MOTIVO",
     "OBSERVACIÓN"
 ];
 
@@ -44,7 +43,172 @@ const download_section = document.querySelector('.finished');
 
 const form = document.querySelector('.main-form');
 
+const timbrado_overlay = document.querySelector('.timbrado-overlay');
+
+const timbrado_field = document.getElementById('timbrado');
+
+const timbrado_submit_button = document.querySelector('.submit-button');
+
+const timbrado_cancel_button = document.querySelector('.cancel-button');
+
+const timbrado_venc_field = document.querySelector('.timbrado-vencimiento');
+
+const timbrado_section_button = document.querySelector('.timbrado-section__button');
+
+const timbrado_section = document.querySelector('.timbrado-section__overlay');
+
+const timbrado_section_salir_button = document.querySelector('.timbrado-section__salir');
+
+timbrado_section_salir_button.addEventListener('click', (event) => {
+    timbrado_section.classList.toggle('hidden');
+})
+
 let processedWorkbook = null; // store after processing
+
+timbrado_submit_button.addEventListener('click', (event) => {
+    let timbrados = JSON.parse(localStorage.getItem("timbrados") || "{}");
+    timbrados[timbrado_field.value] = timbrado_venc_field.value;
+    localStorage.setItem("timbrados", JSON.stringify(timbrados));
+})
+
+timbrado_section_button.addEventListener('click', (event) => {
+    timbrado_section.classList.toggle('hidden');
+})
+
+timbrado_cancel_button.addEventListener('click', (event) => {
+    location.reload();
+})
+
+generateTimbradoTable()
+
+function generateTimbradoTable() {
+    const timbradosData = JSON.parse(localStorage.getItem("timbrados") || "{}");
+    const container = document.querySelector(".timbrado-section");
+    
+    // Clear previous table
+    const oldTable = container.querySelector("table");
+    if (oldTable) {
+        container.removeChild(oldTable);
+    }
+
+    const table = document.createElement("table");
+    table.classList.add("table-auto", "border", "border-collapse", "w-full", "mt-4");
+
+    const headerRow = document.createElement("tr");
+    ["Timbrado", "Fecha de Vencimiento", "Acciones"].forEach(text => {
+        const th = document.createElement("th");
+        th.textContent = text;
+        th.classList.add("border", "px-4", "py-2");
+        headerRow.appendChild(th);
+    });
+    table.appendChild(headerRow);
+
+    for (const [id, expiration] of Object.entries(timbradosData)) {
+        const row = document.createElement("tr");
+
+        // Timbrado Cell
+        const idTd = document.createElement("td");
+        idTd.classList.add("border", "px-4", "py-2");
+        const idInput = document.createElement("input");
+        idInput.type = "text";
+        idInput.value = id;
+        idInput.readOnly = true; 
+        idInput.classList.add("bg-transparent", "w-full");
+        idTd.appendChild(idInput);
+        row.appendChild(idTd);
+        
+        // Expiration Cell
+        const expirationTd = document.createElement("td");
+        expirationTd.classList.add("border", "px-4", "py-2");
+        const expirationInput = document.createElement("input");
+        expirationInput.type = "date";
+        expirationInput.value = expiration;
+        expirationInput.readOnly = true;
+        expirationInput.classList.add("bg-transparent", "w-full");
+        expirationTd.appendChild(expirationInput);
+        row.appendChild(expirationTd);
+
+        // Actions Cell
+        const actionsTd = document.createElement("td");
+        actionsTd.classList.add("border", "px-4", "py-2");
+
+        const editButton = document.createElement("button");
+        editButton.textContent = "Editar";
+        editButton.classList.add("bg-yellow-500", "hover:bg-yellow-600", "text-white", "font-bold", "py-1", "px-2", "rounded", "mr-2");
+        
+        const saveButton = document.createElement("button");
+        saveButton.textContent = "Guardar";
+        saveButton.classList.add("bg-green-500", "hover:bg-green-600", "text-white", "font-bold", "py-1", "px-2", "rounded", "mr-2", "hidden");
+
+        const deleteButton = document.createElement("button");
+        deleteButton.textContent = "Eliminar";
+        deleteButton.classList.add("bg-red-500", "hover:bg-red-600", "text-white", "font-bold", "py-1", "px-2", "rounded");
+
+        actionsTd.appendChild(editButton);
+        actionsTd.appendChild(saveButton);
+        actionsTd.appendChild(deleteButton);
+        row.appendChild(actionsTd);
+
+        // Event Listeners
+        editButton.addEventListener('click', () => {
+            idInput.readOnly = false;
+            expirationInput.readOnly = false;
+            editButton.classList.add('hidden');
+            saveButton.classList.remove('hidden');
+        });
+
+        saveButton.addEventListener('click', () => {
+            const oldId = id;
+            const newId = idInput.value;
+            const newExpiration = expirationInput.value;
+
+            let timbrados = JSON.parse(localStorage.getItem("timbrados") || "{}");
+            
+            if (oldId !== newId) {
+                delete timbrados[oldId];
+            }
+            timbrados[newId] = newExpiration;
+            
+            localStorage.setItem("timbrados", JSON.stringify(timbrados));
+
+            idInput.readOnly = true;
+            expirationInput.readOnly = true;
+            editButton.classList.remove('hidden');
+            saveButton.classList.add('hidden');
+            
+            generateTimbradoTable(); // Redraw the table
+        });
+
+        deleteButton.addEventListener('click', () => {
+            let timbrados = JSON.parse(localStorage.getItem("timbrados") || "{}");
+            delete timbrados[id];
+            localStorage.setItem("timbrados", JSON.stringify(timbrados));
+            generateTimbradoTable(); // Redraw the table
+        });
+
+        table.appendChild(row);
+    }
+
+    container.appendChild(table);
+}
+
+
+function reformatDate(fechaCell) {
+    if (fechaCell && fechaCell.value) {
+        let dateVal = fechaCell.value;
+        if (dateVal instanceof Date) {
+            if (!isNaN(dateVal.getTime())) { // Check for valid date
+                const day = String(dateVal.getUTCDate()).padStart(2, '0');
+                const month = String(dateVal.getUTCMonth() + 1).padStart(2, '0');
+                const year = dateVal.getUTCFullYear();
+                fechaCell.value = `${day}/${month}/${year}`;
+            }
+        } else if (typeof dateVal === 'string' && /^\d{4}-\d{2}-\d{2}/.test(dateVal)) {
+            const [year, month, day] = dateVal.substring(0, 10).split('-');
+            fechaCell.value = `${day}/${month}/${year}`;
+        }
+    }
+}
 
 function reorderColumnsByHeaders(worksheet, desiredHeaders) {
     const headerRow = worksheet.getRow(1);
@@ -108,6 +272,11 @@ function insertColumnWithDefault(worksheet, position, headerName, defaultValue) 
 
 form.addEventListener('submit', async (event) => {
     event.preventDefault();
+
+    timbrado_overlay.classList.add("hidden");
+    in_process_section.classList.add('hidden');
+    download_section.classList.add('hidden')
+
 
     // Security checkings
     const selectedFile = fileInput.files[0];
@@ -185,7 +354,7 @@ form.addEventListener('submit', async (event) => {
         insertColumnWithDefault(worksheet, 1, "MOTIVO", "");
         insertColumnWithDefault(worksheet, 1, "OBSERVACIÓN", "");
 
-
+        let timbrados = JSON.parse(localStorage.getItem("timbrados") || "{}");
         // ----------- PERFORM DATA TRANSFORMATIONS AND CALCULATIONS -----------
         
         // 1. Get all column indices by header name for efficient access
@@ -202,20 +371,7 @@ form.addEventListener('submit', async (event) => {
 
             // Task: Reformat "FECHA" from YYYY-MM-DD to DD/MM/YYYY
             const fechaCell = row.getCell(colIndexes['FECHA']);
-            if (fechaCell && fechaCell.value) {
-                let dateVal = fechaCell.value;
-                if (dateVal instanceof Date) {
-                    if (!isNaN(dateVal.getTime())) { // Check for valid date
-                        const day = String(dateVal.getUTCDate()).padStart(2, '0');
-                        const month = String(dateVal.getUTCMonth() + 1).padStart(2, '0');
-                        const year = dateVal.getUTCFullYear();
-                        fechaCell.value = `${day}/${month}/${year}`;
-                    }
-                } else if (typeof dateVal === 'string' && /^\d{4}-\d{2}-\d{2}/.test(dateVal)) {
-                    const [year, month, day] = dateVal.substring(0, 10).split('-');
-                    fechaCell.value = `${day}/${month}/${year}`;
-                }
-            }
+            reformatDate(fechaCell);
             
             // Task: Manipulate "NOMBRE_PERSONA" (replace and uppercase)
             const nombrePersonaCell = row.getCell(colIndexes['NOMBRE_PERSONA']);
@@ -262,8 +418,25 @@ form.addEventListener('submit', async (event) => {
             
             // Task: Copy "TOTAL_BRUTO" to "TOTAL"
             row.getCell(colIndexes['TOTAL']).value = totalBruto;
+
+            const timbradoVencCell = row.getCell(colIndexes['TIMBRADO_VENCIMIENTO']);
+            const timbradoCell =  row.getCell(colIndexes['TIMBRADO']);
+
+            if (timbrados[timbradoCell.value] != undefined) {
+                console.log(timbrados[timbradoCell.value]);
+                timbradoVencCell.value = timbrados[timbradoCell.value];
+                reformatDate(timbradoVencCell);
+            }
+            else {
+                timbrado_field.value = timbradoCell.value;
+                timbrado_overlay.classList.toggle("hidden");
+                in_process_section.classList.toggle('hidden');
+                throw new Error("Missing timbrado, stop processing");
+            }
         });
 
+
+        console.log('XD')
 
         // ----------- REORDER ALL COLUMNS -----------
         const reorderedSheet = reorderColumnsByHeaders(worksheet, desiredOrder);
@@ -278,10 +451,11 @@ form.addEventListener('submit', async (event) => {
         // alert("File processed successfully! Click 'Download' to get the new file.");
 
     } catch (err) {
-        console.error("Error processing file:", err);
-        alert("Could not process the file. Please check the console for errors.");
-        in_process_section.classList.toggle('hidden');
-
+        if (err != "Error: Missing timbrado, stop processing") {
+            console.error("Error processing file:", err);
+            alert("Could not process the file. Please check the console for errors.");
+            in_process_section.classList.toggle('hidden');
+        }
     }
 });
 

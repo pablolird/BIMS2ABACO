@@ -10,12 +10,42 @@
     <link rel="manifest" href="favicon/site.webmanifest">
     <link href="https://cdn.jsdelivr.net/npm/flowbite@3.1.2/dist/flowbite.min.css" rel="stylesheet" />
 </head>
-<body class="text-white h-dvh w-dvw bg-slate-950 flex flex-col p-10 gap-10 items-center">
-    <h1 class="font-bold text-4xl">BIMS2ABACO</h1>
+<body class="relative text-white h-dvh w-dvw bg-slate-950 flex flex-col p-10 gap-10 items-center">
+    <button class="timbrado-section__button absolute bottom-2 right-2 text-white bg-blue-700 hover:bg-blue-800 focus:outline-none font-medium rounded-lg text-sm w-full sm:w-auto px-5 py-2.5 text-center">Timbrados</button>
+
+    <div class="p-20 hidden backdrop-blur-md flex flex-col items-center bg-stone-900/40 absolute w-dvw h-dvh inset-0 timbrado-section__overlay">
+        <button class="timbrado-section__salir absolute top-2 right-2 text-white bg-rose-500 hover:bg-rose-600 focus:outline-none font-medium rounded-lg text-sm w-full sm:w-auto px-5 py-2.5 text-center">Salir</button>
+        <div class="flex flex-col items-center bg-slate-800 p-5 w-[70%] h-[100%] rounded-md timbrado-section__container">
+            <h2 class="text-xl font-bold pb-3 text-center">Lista de timbrados grabados</h2>
+            <div class="w-fit h-full timbrado-section overflow-y-auto">
+            </div>
+        </div>
+    </div>
+
+
+    <div class="hidden backdrop-blur-md flex justify-center items-center bg-stone-900/40 absolute w-full h-full inset-0 timbrado-overlay">
+        <form class="max-w-sm mx-auto">
+            <p class="text-lg font-bold text-center pb-10">¡Nuevo timbrado detectado!</p>
+            <p class="pb-10">¿Desea agregar este timbrado a la base de datos?</p>
+            <div class="mb-5">
+                <label for="timbrado" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Timbrado</label>
+                <input type="text" value="15382382"  id="timbrado" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500" readonly required />
+            </div>
+            <label for="timbrado-vencimiento" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Vencimiento</label>
+            <input type="date" id="timbrado-vencimiento" class="timbrado-vencimiento bg-gray-100 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-800 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500" required />
+            
+            <div class="flex justify-center items-center gap-3 buttons-container">
+                <button type="submit" class="mt-5 text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-sm w-full sm:w-auto px-5 py-2.5 text-center dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800 submit-button">Enviar</button>
+                <button type="submit" class="mt-5 text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-sm w-full sm:w-auto px-5 py-2.5 text-center dark:bg-rose-500 dark:hover:bg-rose-600 dark:focus:ring-blue-800 cancel-button">Cancelar</button>
+            </div>
+        </form>
+    </div>
+
+    <h1 class="font-bold text-4xl">BIMS<span class="text-amber-400">2</span>ABACO</h1>
 
     <form class="max-w-lg w-[70%] p-10 gap-3 bg-slate-800 rounded-md border border-gray-400 main-form flex flex-col justify-center items-center">
         <div class="w-full flex flex-col justify-center items-center center-container">
-            <label class="text-xl pb-2 block mb-2 text-sm font-medium text-gray-900 dark:text-white" for="file_input">Upload your BIMS excel file</label>
+            <label class="text-xl pb-2 block mb-2 text-sm font-medium text-gray-900 dark:text-white" for="fileInput">Sube tu archivo excel de BIMS</label>
             <input class="block text-sm text-gray-900 border border-gray-300 rounded-lg cursor-pointer bg-gray-50 dark:text-gray-400 focus:outline-none dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400" 
                     id="fileInput" 
                     type="file"
@@ -25,7 +55,7 @@
         </div>
 
 
-        <button class="mt-5 bg-slate-700 py-2 px-5 rounded-md border border-gray-500 hover:bg-slate-600">Submit</button>
+        <button class="mt-5 bg-slate-700 py-2 px-5 rounded-md border border-gray-500 hover:bg-slate-600">Enviar</button>
     </form>
 
     <div class="download-section ">
@@ -34,12 +64,12 @@
                 <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                 <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
             </svg>
-            <p>Processing...</p>
+            <p>Procesando...</p>
         </div>
 
         <div class="hidden flex flex-col items-center finished">
-            <p class="font-bold">Processing complete!</p>
-            <p class="pb-4"> Click below to download the result</p>
+            <p class="font-bold">Procesamiento completo!</p>
+            <p class="pb-4">Click abajo para descargar el resultado</p>
             <button class="border border-green-800 rounded-md text-nowrap w-min py-2 px-4 bg-green-600 hover:bg-green-500" id="downloadBtn">Download File</button>
         </div>
     </div>
