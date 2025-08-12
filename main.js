@@ -20,7 +20,7 @@ const desiredOrder = [
     "TOTAL",
     "MONEDA",
     "TOTAL_GS",
-    "CONDICIÓN",
+    "CONDICION",
     "CUOTAS",
     "CUENTA_10",
     "CUENTA_05",
@@ -76,6 +76,7 @@ timbrado_section_button.addEventListener('click', (event) => {
 })
 
 timbrado_cancel_button.addEventListener('click', (event) => {
+    event.preventDefault();
     location.reload();
 })
 
@@ -319,7 +320,7 @@ form.addEventListener('submit', async (event) => {
         worksheet.spliceColumns(13, 1); // Deletes "RETENCION"
 
         // ----------- RENAME COLUMNS --------------
-        getCellHeader(worksheet, 'Tipo de Comprobante').value = "CONDICIÓN";
+        getCellHeader(worksheet, 'Tipo de Comprobante').value = "CONDICION";
         getCellHeader(worksheet, 'Fecha de Emisión').value = "FECHA";
         getCellHeader(worksheet, 'Número de Comprante').value = "FACTURA";
         getCellHeader(worksheet, 'Código de Timbrado').value = "TIMBRADO";
