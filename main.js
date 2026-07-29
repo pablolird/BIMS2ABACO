@@ -359,7 +359,7 @@ form.addEventListener('submit', async (event) => {
         // ----------- RENAME COLUMNS --------------
         getCellHeader(worksheet, 'Tipo de Comprobante').value = "CONDICION";
         getCellHeader(worksheet, 'Fecha de Emisión').value = "FECHA";
-        getCellHeader(worksheet, 'Número de Comprante').value = "FACTURA";
+        getCellHeader(worksheet, 'Número de Comprobante').value = "FACTURA";
         getCellHeader(worksheet, 'Código de Timbrado').value = "TIMBRADO";
         getCellHeader(worksheet, 'Número de Documento').value = "DOCUMENTO_PERSONA";
         getCellHeader(worksheet, 'Nombre / Razón Social').value = "NOMBRE_PERSONA";
