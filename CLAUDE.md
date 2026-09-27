@@ -28,9 +28,9 @@ There are no tests, linter, or bundler configured in this repo (no `package.json
 
 The BIMS → Abaco conversion is a fixed sequence of worksheet mutations performed in-place on an ExcelJS `Workbook`, in this order:
 
-1. **Validate upload** — extension/MIME-type allowlist for `.xlsx`/`.xls`/`.csv`.
-2. **Delete columns** — remove known BIMS-only columns (`DIA`, `SUCURSAL`, `RETENCION`) by fixed index via `worksheet.spliceColumns`. These indices are hard-coded and assume BIMS's column layout is fixed and columns are deleted in the listed order (deleting shifts subsequent indices — see the inline comments in `main.js` before changing this).
-3. **Rename columns** — BIMS header text is rewritten to Abaco header names via `getCellHeader` (case-sensitive exact match on row-1 header text).
+1. **Validate upload** — only `.xlsx` is accepted (extension check; MIME type must be the xlsx type or empty). The form handler then calls `processFile(file)`, which holds the rest of the pipeline and can be re-run after new timbrados are saved.
+2. **Validate BIMS layout** — every header in `requiredBimsHeaders` (top of `main.js`) must be present in row 1, otherwise conversion stops with an alert listing the missing columns. BIMS-only columns (`Día`, `Sucursal`, `Retención`) are not deleted explicitly; step 6 drops every column not in `desiredOrder`.
+3. **Rename columns** — BIMS header text is rewritten to Abaco header names per the `headerRenames` map via `getCellHeader` (case-sensitive match on trimmed row-1 header text).
 4. **Insert new columns** — Abaco-only columns are added via `insertColumnWithDefault`, each pre-filled with a default value (empty string, `"0"`, `"GS"`, fixed account-name strings, etc.).
 5. **Row-by-row transformations** — for each data row: reformat dates (`reformatDate`, ISO → `DD/MM/YYYY`), normalize/replace customer name and document values, derive `TIPO_DOCUMENTO_PERSONA` (RUC vs CEDULA_PARAGUAYA) from whether the document number contains a `-`, compute IVA/subtotal/total fields, set `CUOTAS` for credit-condition rows, mark zero-total rows as `ANULADO`/`INUTILIZADO`, and look up the row's `TIMBRADO` in the timbrado registry (see below).
 6. **Reorder columns** — `reorderColumnsByHeaders` builds a brand-new worksheet with columns arranged per the `desiredOrder` array (top of `main.js`) and replaces the original worksheet, preserving its name. This is the master schema for the Abaco output format — when adding/renaming an output column, update `desiredOrder` too.
@@ -38,7 +38,7 @@ The BIMS → Abaco conversion is a fixed sequence of worksheet mutations perform
 
 ### Timbrado registry
 
-"Timbrados" (Paraguayan invoice authorization codes) are stored in `localStorage` under the key `"timbrados"`, as a JSON map of `{ [timbradoCode]: { vencimiento, tipo } }`. During row processing, if a row's `TIMBRADO` code isn't in this map, conversion halts mid-worksheet, the UI prompts the user to enter the expiration date and type for that new timbrado, and — once submitted — the timbrado is saved to `localStorage` for future runs. The user must then re-upload/resubmit to reprocess with the now-known timbrado. A separate "Timbrados" overlay lets the user view, edit, or delete saved entries directly (table is regenerated via `generateTimbradoTable()` after any change).
+"Timbrados" (Paraguayan invoice authorization codes) are stored in `localStorage` under the key `"timbrados"`, as a JSON map of `{ [timbradoCode]: { vencimiento, tipo } }`. Codes are trimmed via `normalizeTimbrado` before lookup (BIMS sometimes exports them with a leading tab) and written back as numbers when purely numeric. During row processing, every code missing from this map is collected; if any are missing, conversion stops before reordering and `showNewTimbradosForm` prompts for the expiration date and type of all of them at once. Submitting saves them to `localStorage` and re-runs `processFile` on the same selected file. A separate "Timbrados" overlay lets the user view, edit, or delete saved entries directly (table is regenerated via `generateTimbradoTable()` after any change).
 
 ## Conventions to preserve
 

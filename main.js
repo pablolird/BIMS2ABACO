@@ -32,6 +32,26 @@ const desiredOrder = [
     "OBSERVACIÓN"
 ];
 
+// BIMS header -> Abaco header
+const headerRenames = {
+    "Tipo de Comprobante": "CONDICION",
+    "Fecha de Emisión": "FECHA",
+    "Número de Comprobante": "FACTURA",
+    "Código de Timbrado": "TIMBRADO",
+    "Número de Documento": "DOCUMENTO_PERSONA",
+    "Nombre / Razón Social": "NOMBRE_PERSONA",
+    "Exento": "SUBTOTAL_EXENTAS",
+    "IVA 10 Impuesto": "LIQUIDACION_IVA_10",
+    "IVA 5 Impuesto": "LIQUIDACION_IVA_05",
+    "Total": "TOTAL_BRUTO"
+};
+
+// Every BIMS column the conversion reads. Files missing any of these are rejected before processing.
+const requiredBimsHeaders = [
+    ...Object.keys(headerRenames),
+    "IVA 10 Base Imponible",
+    "IVA 5 Base Imponible"
+];
 
 const fileInput = document.getElementById('fileInput');
 
@@ -45,15 +65,11 @@ const form = document.querySelector('.main-form');
 
 const timbrado_overlay = document.querySelector('.timbrado-overlay');
 
-const timbrado_field = document.getElementById('timbrado');
+const timbrado_form = document.querySelector('.timbrado-form');
 
-const timbrado_submit_button = document.querySelector('.submit-button');
+const timbrado_list = document.querySelector('.timbrado-list');
 
 const timbrado_cancel_button = document.querySelector('.cancel-button');
-
-const timbrado_venc_field = document.querySelector('.timbrado-vencimiento');
-
-const timbrado_tipo_field = document.querySelector('.timbrado-tipo')
 
 const timbrado_section_button = document.querySelector('.timbrado-section__button');
 
@@ -67,15 +83,22 @@ timbrado_section_salir_button.addEventListener('click', (event) => {
 
 let processedWorkbook = null; // store after processing
 
-timbrado_submit_button.addEventListener('click', (event) => {
+// Save every new timbrado from the prompt, then re-run the conversion on the same file
+timbrado_form.addEventListener('submit', (event) => {
+    event.preventDefault();
     let timbrados = JSON.parse(localStorage.getItem("timbrados") || "{}");
 
-    timbrados[timbrado_field.value] = {
-        vencimiento: timbrado_venc_field.value,
-        tipo: timbrado_tipo_field.value
-    };
+    timbrado_list.querySelectorAll('.new-timbrado').forEach(entry => {
+        timbrados[entry.dataset.timbrado] = {
+            vencimiento: entry.querySelector('input[type="date"]').value,
+            tipo: entry.querySelector('select').value
+        };
+    });
 
     localStorage.setItem("timbrados", JSON.stringify(timbrados));
+    generateTimbradoTable();
+    timbrado_overlay.classList.add("hidden");
+    processFile(fileInput.files[0]);
 })
 
 timbrado_section_button.addEventListener('click', (event) => {
@@ -83,9 +106,54 @@ timbrado_section_button.addEventListener('click', (event) => {
 })
 
 timbrado_cancel_button.addEventListener('click', (event) => {
-    event.preventDefault();
-    location.reload();
+    timbrado_overlay.classList.add("hidden");
 })
+
+function showNewTimbradosForm(codes) {
+    timbrado_list.replaceChildren();
+
+    codes.forEach(code => {
+        const entry = document.createElement("div");
+        entry.classList.add("new-timbrado", "p-3", "rounded-lg", "border", "border-gray-600");
+        entry.dataset.timbrado = code;
+
+        const title = document.createElement("p");
+        title.classList.add("font-bold", "mb-2");
+        title.textContent = `Timbrado ${code}`;
+
+        const vencLabel = document.createElement("label");
+        vencLabel.classList.add("block", "mb-2", "text-sm", "font-medium", "text-white");
+        vencLabel.textContent = "Vencimiento";
+        const vencInput = document.createElement("input");
+        vencInput.type = "date";
+        vencInput.required = true;
+        vencInput.classList.add("mb-3", "border", "text-sm", "rounded-lg", "block", "w-full", "p-2.5", "bg-gray-800", "border-gray-600", "text-white");
+        vencLabel.appendChild(vencInput);
+
+        const tipoLabel = document.createElement("label");
+        tipoLabel.classList.add("block", "mb-2", "text-sm", "font-medium", "text-white");
+        tipoLabel.textContent = "Tipo";
+        const tipoSelect = document.createElement("select");
+        tipoSelect.classList.add("border", "text-sm", "rounded-lg", "block", "w-full", "p-2.5", "bg-gray-800", "border-gray-600", "text-white");
+        ["PREIMPRESO", "AUTOIMPRESO"].forEach(tipo => {
+            const option = document.createElement("option");
+            option.value = tipo;
+            option.textContent = tipo;
+            tipoSelect.appendChild(option);
+        });
+        tipoLabel.appendChild(tipoSelect);
+
+        entry.append(title, vencLabel, tipoLabel);
+        timbrado_list.appendChild(entry);
+    });
+
+    timbrado_overlay.classList.remove("hidden");
+}
+
+// BIMS sometimes exports timbrado codes with stray whitespace (e.g. a leading tab)
+function normalizeTimbrado(value) {
+    return value == null ? "" : value.toString().trim();
+}
 
 generateTimbradoTable()
 
@@ -287,7 +355,8 @@ function reorderColumnsByHeaders(worksheet, desiredHeaders) {
 function getCellHeader(worksheet, headerName) {
     const headerRow = worksheet.getRow(1); // assuming first row has headers
     for (let colIndex = 1; colIndex <= headerRow.cellCount; colIndex++) {
-        if (headerRow.getCell(colIndex).value === headerName) {
+        const value = headerRow.getCell(colIndex).value;
+        if (value != null && value.toString().trim() === headerName) {
             return headerRow.getCell(colIndex);
         }
     }
@@ -319,54 +388,50 @@ form.addEventListener('submit', async (event) => {
     // Security checkings
     const selectedFile = fileInput.files[0];
     if (!selectedFile) {
-        alert("Please select a file.");
+        alert("Por favor seleccione un archivo.");
         return;
     }
 
-    // Allowed extensions and MIME types
-    const allowedExtensions = ['xlsx', 'xls', 'csv'];
-    const allowedMimeTypes = [
-        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', // .xlsx
-        'application/vnd.ms-excel',                                         // .xls
-        'text/csv'                                                          // .csv
-    ];
-
+    // Only .xlsx is supported (ExcelJS reads it via workbook.xlsx).
+    // Some browsers/OSes report an empty MIME type for .xlsx, so only reject a known-wrong one.
+    const xlsxMimeType = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
     const fileExtension = selectedFile.name.split('.').pop().toLowerCase();
-    const fileMimeType = selectedFile.type;
 
-    if (!allowedExtensions.includes(fileExtension) || !allowedMimeTypes.includes(fileMimeType)) {
-        alert("Only spreadsheet files (.xlsx, .xls, .csv) are allowed.");
+    if (fileExtension !== 'xlsx' || (selectedFile.type && selectedFile.type !== xlsxMimeType)) {
+        alert("Solo se permiten archivos de Excel (.xlsx).");
         return;
     }
-    
-    in_process_section.classList.toggle('hidden');
+
+    await processFile(selectedFile);
+});
+
+async function processFile(file) {
+    processedWorkbook = null;
+    download_section.classList.add('hidden');
+    in_process_section.classList.remove('hidden');
 
     try {
-        const arrayBuffer = await selectedFile.arrayBuffer();
+        const arrayBuffer = await file.arrayBuffer();
         const workbook = new ExcelJS.Workbook();
         await workbook.xlsx.load(arrayBuffer);
 
         const worksheet = workbook.worksheets[0];
 
-        // ----------- DELETE COLUMNS --------------
-        // NOTE: Column indices change after each splice.
-        // Original: 1:DIA, 2:Fecha, 3:TipoComp, 4:SUCURSAL
-        worksheet.spliceColumns(1, 1); // Deletes "DIA", SUCURSAL is now at col 3
-        worksheet.spliceColumns(3, 1); // Deletes "SUCURSAL"
-        // After deletions, original column 15 ("RETENCION") is now at column 13
-        worksheet.spliceColumns(13, 1); // Deletes "RETENCION"
+        // ----------- VALIDATE BIMS LAYOUT --------------
+        const missingHeaders = requiredBimsHeaders.filter(header => getCellHeader(worksheet, header) === -1);
+        if (missingHeaders.length > 0) {
+            in_process_section.classList.add('hidden');
+            alert("El archivo no tiene el formato esperado de BIMS. Faltan las columnas:\n- " + missingHeaders.join("\n- "));
+            return;
+        }
+
+        // BIMS-only columns (Día, Sucursal, Retención, ...) don't need deleting:
+        // reorderColumnsByHeaders only keeps the columns listed in desiredOrder.
 
         // ----------- RENAME COLUMNS --------------
-        getCellHeader(worksheet, 'Tipo de Comprobante').value = "CONDICION";
-        getCellHeader(worksheet, 'Fecha de Emisión').value = "FECHA";
-        getCellHeader(worksheet, 'Número de Comprobante').value = "FACTURA";
-        getCellHeader(worksheet, 'Código de Timbrado').value = "TIMBRADO";
-        getCellHeader(worksheet, 'Número de Documento').value = "DOCUMENTO_PERSONA";
-        getCellHeader(worksheet, 'Nombre / Razón Social').value = "NOMBRE_PERSONA";
-        getCellHeader(worksheet, 'Exento').value = "SUBTOTAL_EXENTAS";
-        getCellHeader(worksheet, 'IVA 10 Impuesto').value = "LIQUIDACION_IVA_10";
-        getCellHeader(worksheet, 'IVA 5 Impuesto').value = "LIQUIDACION_IVA_05";
-        getCellHeader(worksheet, 'Total').value = "TOTAL_BRUTO";
+        for (const [bimsHeader, abacoHeader] of Object.entries(headerRenames)) {
+            getCellHeader(worksheet, bimsHeader).value = abacoHeader;
+        }
 
         // ----------- INSERT NEW COLUMNS WITH DEFAULTS --------------
         // Note: Inserting all at position 1 adds them in reverse order, which is fine since we reorder them later.
@@ -393,6 +458,7 @@ form.addEventListener('submit', async (event) => {
         insertColumnWithDefault(worksheet, 1, "OBSERVACIÓN", "");
 
         let timbrados = JSON.parse(localStorage.getItem("timbrados") || "{}");
+        const unknownTimbrados = new Set();
         // ----------- PERFORM DATA TRANSFORMATIONS AND CALCULATIONS -----------
         
         // 1. Get all column indices by header name for efficient access
@@ -470,7 +536,6 @@ form.addEventListener('submit', async (event) => {
             // Task: check if "CONDICION" is "CREDITO" and set "CUOTAS" to 1
             const condicionCell = row.getCell(colIndexes['CONDICION']);
             if (condicionCell.value == "CRÉDITO") {
-                console.log("XD")
                 row.getCell(colIndexes['CUOTAS']).value = "1";
             }
 
@@ -486,19 +551,26 @@ form.addEventListener('submit', async (event) => {
             const timbradoCell =  row.getCell(colIndexes['TIMBRADO']);
             const tipoCell = row.getCell(colIndexes['TIPO_DOCUMENTO']);
 
-            if (timbrados[timbradoCell.value] != undefined) {
-                // console.log(timbrados[timbradoCell.value]);
-                timbradoVencCell.value = timbrados[timbradoCell.value].vencimiento;
-                tipoCell.value = timbrados[timbradoCell.value].tipo;
+            const timbrado = normalizeTimbrado(timbradoCell.value);
+            if (timbrado === "") return;
+            timbradoCell.value = /^\d+$/.test(timbrado) ? Number(timbrado) : timbrado;
+
+            if (timbrados[timbrado] != undefined) {
+                timbradoVencCell.value = timbrados[timbrado].vencimiento;
+                tipoCell.value = timbrados[timbrado].tipo;
                 reformatDate(timbradoVencCell);
             }
             else {
-                timbrado_field.value = timbradoCell.value;
-                timbrado_overlay.classList.toggle("hidden");
-                in_process_section.classList.toggle('hidden');
-                throw new Error("Missing timbrado, stop processing");
+                unknownTimbrados.add(timbrado);
             }
         });
+
+        // Ask for all unknown timbrados at once; the form re-runs the conversion once they're saved
+        if (unknownTimbrados.size > 0) {
+            in_process_section.classList.add('hidden');
+            showNewTimbradosForm([...unknownTimbrados]);
+            return;
+        }
 
 
         // ----------- REORDER ALL COLUMNS -----------
@@ -509,18 +581,15 @@ form.addEventListener('submit', async (event) => {
         reorderedSheet.name = worksheet.name; // Preserve old sheet name
 
         processedWorkbook = workbook;
-        in_process_section.classList.toggle('hidden');
-        download_section.classList.toggle('hidden')
-        // alert("File processed successfully! Click 'Download' to get the new file.");
+        in_process_section.classList.add('hidden');
+        download_section.classList.remove('hidden');
 
     } catch (err) {
-        if (err != "Error: Missing timbrado, stop processing") {
-            console.error("Error processing file:", err);
-            alert("Could not process the file. Please check the console for errors.");
-            in_process_section.classList.toggle('hidden');
-        }
+        console.error("Error processing file:", err);
+        alert("No se pudo procesar el archivo. Revise la consola para más detalles.");
+        in_process_section.classList.add('hidden');
     }
-});
+}
 
 
 downloadBtn.addEventListener('click', async () => {
